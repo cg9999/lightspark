@@ -20,6 +20,8 @@
 #ifndef _ABC_H
 #define _ABC_H
 
+#define alignof _alignof
+
 #include "compat.h"
 #include <llvm/Module.h>
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
