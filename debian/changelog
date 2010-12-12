@@ -1,3 +1,9 @@
+lightspark (0.4.5+git20101212-1) natty; urgency=low
+
+  * Update to d77c0e8f4b44a9697146
+
+ -- Henri Valta <cg@jakorasia.info>  Sun, 12 Dec 2010 23:33:39 +0200
+
 lightspark (0.4.5+git20101211-1) natty; urgency=low
 
   * Depend on llvm
