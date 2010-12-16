@@ -1,26 +1,8 @@
-lightspark (0.4.5+git20101214-1) natty; urgency=low
+lightspark (0.4.5.1-0ubuntu1) maverick; urgency=low
 
-  * Update to d8089dfc6ae1ba9ed07f
+  * Bugfix release
 
- -- Henri Valta <cg@jakorasia.info>  Tue, 14 Dec 2010 19:31:41 +0200
-
-lightspark (0.4.5+git20101212-1) natty; urgency=low
-
-  * Update to d77c0e8f4b44a9697146
-
- -- Henri Valta <cg@jakorasia.info>  Sun, 12 Dec 2010 23:33:39 +0200
-
-lightspark (0.4.5+git20101211-1) natty; urgency=low
-
-  * Depend on llvm
-
- -- Henri Valta <cg@jakorasia.info>  Sat, 11 Dec 2010 21:12:42 +0200
-
-lightspark (0.4.5+git20101211) natty; urgency=low
-
-  * Update dependancies for Natty and work around LLVM 2.8 header bug
-
- -- Henri Valta <cg@jakorasia.info>  Sat, 11 Dec 2010 20:03:16 +0200
+ -- Alessandro Pignotti <a.pignotti@sssup.it>  Thu, 16 Dec 2010 06:27:39 +0100
 
 lightspark (0.4.5-0ubuntu1) maverick; urgency=low
 

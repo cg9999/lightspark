@@ -544,7 +544,7 @@ std::istream& lightspark::operator>>(std::istream& s, FILLSTYLE& v)
 	else if(v.FillStyleType==REPEATING_BITMAP || v.FillStyleType==CLIPPED_BITMAP || v.FillStyleType==NON_SMOOTHED_REPEATING_BITMAP || 
 			v.FillStyleType==NON_SMOOTHED_CLIPPED_BITMAP)
 	{
-		UI16 bitmapId;
+		UI16_SWF bitmapId;
 		s >> bitmapId >> v.Matrix;
 		//Lookup the bitmap in the dictionary
 		if(bitmapId!=65535)
@@ -963,13 +963,15 @@ std::istream& lightspark::operator>>(std::istream& s, CLIPEVENTFLAGS& v)
 {
 	if(pt->version<=5)
 	{
-		UI16 t;
+		UI16_SWF t;
 		s >> t;
 		v.toParse=t;
 	}
 	else
 	{
-		s >> v.toParse;
+		UI32_SWF t;
+		s >> t;
+		v.toParse=t;
 	}
 	return s;
 }

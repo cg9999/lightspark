@@ -28,7 +28,7 @@ FLV_HEADER::FLV_HEADER(std::istream& in):dataOffset(0),_hasAudio(false),_hasVide
 {
 	UI8 Signature[3];
 	UI8 Version;
-	UI32 DataOffset;
+	UI32_FLV DataOffset;
 
 	in >> Signature[0] >> Signature[1] >> Signature[2] >> Version;
 	version=Version;
@@ -61,7 +61,6 @@ FLV_HEADER::FLV_HEADER(std::istream& in):dataOffset(0),_hasAudio(false),_hasVide
 
 	in >> DataOffset;
 
-	DataOffset.bswap();
 	dataOffset = DataOffset;
 	assert_and_throw(dataOffset==9);
 }
@@ -69,20 +68,18 @@ FLV_HEADER::FLV_HEADER(std::istream& in):dataOffset(0),_hasAudio(false),_hasVide
 VideoTag::VideoTag(istream& s)
 {
 	//Read dataSize
-	UI24 DataSize;
+	UI24_FLV DataSize;
 	s >> DataSize;
-	DataSize.bswap();
 	dataSize=DataSize;
 
 	//Read and assemble timestamp
-	UI24 Timestamp;
+	UI24_FLV Timestamp;
 	s >> Timestamp;
-	Timestamp.bswap();
 	UI8 TimestampExtended;
 	s >> TimestampExtended;
 	timestamp=Timestamp|(TimestampExtended<<24);
 	
-	UI24 StreamID;
+	UI24_FLV StreamID;
 	s >> StreamID;
 	assert_and_throw(StreamID==0);
 }
@@ -114,11 +111,9 @@ ScriptDataTag::ScriptDataTag(istream& s):VideoTag(s)
 
 ScriptDataString::ScriptDataString(std::istream& s)
 {
-	UI16 Length;
+	UI16_FLV Length;
 	s >> Length;
-	Length.bswap();
 	size=Length;
-
 	//TODO: use resize on tiny_string
 	char* buf=new char[Length+1];
 	s.read(buf,Length);
@@ -132,9 +127,8 @@ ScriptDataString::ScriptDataString(std::istream& s)
 ScriptECMAArray::ScriptECMAArray(std::istream& s, ScriptDataTag* tag)
 {
 	//numVar is an 'approximation' of array size
-	UI32 numVar;
+	UI32_FLV numVar;
 	s >> numVar;
-	numVar.bswap();
 
 	while(1)
 	{
@@ -233,7 +227,7 @@ VideoDataTag::VideoDataTag(istream& s):VideoTag(s),_isHeader(false),packetData(N
 				throw UnsupportedException("Unexpected packet type in FLV");
 		}
 
-		SI24 CompositionTime;
+		SI24_FLV CompositionTime;
 		s >> CompositionTime;
 		assert_and_throw(CompositionTime==0); //TODO: what are composition times
 

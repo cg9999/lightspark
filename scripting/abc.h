@@ -40,6 +40,24 @@
 namespace lightspark
 {
 
+class u8
+{
+friend std::istream& operator>>(std::istream& in, u8& v);
+private:
+	uint32_t val;
+public:
+	operator uint32_t() const{return val;}
+};
+
+class u16
+{
+friend std::istream& operator>>(std::istream& in, u16& v);
+private:
+	uint32_t val;
+public:
+	operator uint32_t() const{return val;}
+};
+
 class s24
 {
 friend std::istream& operator>>(std::istream& in, s24& v);
@@ -47,6 +65,17 @@ private:
 	int32_t val;
 public:
 	operator int32_t(){return val;}
+};
+
+class u30
+{
+friend std::istream& operator>>(std::istream& in, u30& v);
+private:
+	uint32_t val;
+public:
+	u30():val(0){}
+	u30(int v):val(v){}
+	operator uint32_t() const{return val;}
 };
 
 class s32
@@ -61,35 +90,6 @@ public:
 class u32
 {
 friend std::istream& operator>>(std::istream& in, u32& v);
-private:
-	uint32_t val;
-public:
-	operator uint32_t() const{return val;}
-};
-
-class u30
-{
-friend std::istream& operator>>(std::istream& in, u30& v);
-private:
-	uint32_t val;
-public:
-	u30():val(0){}
-	u30(int v):val(v){}
-	operator uint32_t() const{return val;}
-};
-
-class u16
-{
-friend std::istream& operator>>(std::istream& in, u16& v);
-private:
-	uint32_t val;
-public:
-	operator uint32_t() const{return val;}
-};
-
-class u8
-{
-friend std::istream& operator>>(std::istream& in, u8& v);
 private:
 	uint32_t val;
 public:
@@ -645,13 +645,14 @@ public:
 	}
 
 	static bool strictEqualImpl(ASObject*, ASObject*);
+	static void publicHandleEvent(EventDispatcher* dispatcher, Event* event);
 
 };
 
 class DoABCTag: public ControlTag
 {
 private:
-	UI32 Flags;
+	UI32_SWF Flags;
 	STRING Name;
 	ABCContext* context;
 	pthread_t thread;
@@ -664,8 +665,8 @@ public:
 class SymbolClassTag: public ControlTag
 {
 private:
-	UI16 NumSymbols;
-	std::vector<UI16> Tags;
+	UI16_SWF NumSymbols;
+	std::vector<UI16_SWF> Tags;
 	std::vector<STRING> Names;
 public:
 	SymbolClassTag(RECORDHEADER h, std::istream& in);

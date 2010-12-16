@@ -33,12 +33,29 @@
 #include <assert.h>
 #include "exceptions.h"
 #ifndef WIN32
-// TODO: Proper CMake check
-#include <arpa/inet.h>
+ // TODO: Proper CMake check
+ #include <arpa/inet.h>
+#endif
+#include <stdatomic.h>
+#include <endian.h>
+
+#ifdef BIG_ENDIAN
+#include <algorithm>
 #endif
 
 namespace lightspark
 {
+
+#define ASFUNCTION(name) \
+	static ASObject* name(ASObject* , ASObject* const* args, const unsigned int argslen)
+#define ASFUNCTIONBODY(c,name) \
+	ASObject* c::name(ASObject* obj, ASObject* const* args, const unsigned int argslen)
+
+#define CLASSBUILDABLE(className) \
+	friend class Class<className>; 
+
+enum SWFOBJECT_TYPE { T_OBJECT=0, T_INTEGER=1, T_NUMBER=2, T_FUNCTION=3, T_UNDEFINED=4, T_NULL=5, T_STRING=6, 
+	T_DEFINABLE=7, T_BOOLEAN=8, T_ARRAY=9, T_CLASS=10, T_QNAME=11, T_NAMESPACE=12, T_UINTEGER=13, T_PROXY=14};
 
 enum STACK_TYPE{STACK_NONE=0,STACK_OBJECT,STACK_INT,STACK_UINT,STACK_NUMBER,STACK_BOOLEAN};
 
@@ -253,62 +270,6 @@ public:
 	}
 };
 
-class UI32
-{
-friend std::istream& operator>>(std::istream& s, UI32& v);
-private:
-	uint32_t val;
-public:
-	UI32():val(0){}
-	UI32(uint32_t v):val(v){}
-	operator uint32_t() const{ return val; }
-	void bswap() { val=ntohl(val); }
-};
-
-class UI24
-{
-friend std::istream& operator>>(std::istream& s, UI24& v);
-private:
-	uint32_t val;
-public:
-	UI24():val(0){}
-	operator uint32_t() const { return val; }
-	void bswap()
-	{
-		val=ntohl(val)>>8; //The most significant byte is discarted
-	}
-};
-
-class SI24
-{
-friend std::istream& operator>>(std::istream& s, SI24& v);
-private:
-	int32_t val;
-public:
-	SI24():val(0){}
-	operator int32_t() const { return val; }
-	void bswap() 
-	{
-		val=ntohl(val)>>8; //The most significant byte is discarted
-		//Check for sign extension
-		if(val&0x800000)
-			val|=(0xff000000);
-	}
-};
-
-class UI16
-{
-friend std::istream& operator>>(std::istream& s, UI16& v);
-private:
-	uint16_t val;
-public:
-	UI16():val(0){}
-	UI16(uint16_t v):val(v){}
-	operator uint16_t() const { return val; }
-	operator UI32() const { return val; }
-	void bswap() { val=ntohs(val); }
-};
-
 class UI8 
 {
 friend std::istream& operator>>(std::istream& s, UI8& v);
@@ -318,7 +279,112 @@ public:
 	UI8():val(0){}
 	UI8(uint8_t v):val(v){}
 	operator uint8_t() const { return val; }
-	operator UI16(){ return val; }
+};
+
+class UI16_SWF
+{
+friend std::istream& operator>>(std::istream& s, UI16_SWF& v);
+protected:
+	uint16_t val;
+public:
+	UI16_SWF():val(0){}
+	UI16_SWF(uint16_t v):val(v){}
+	operator uint16_t() const { return val; }
+};
+
+class UI16_FLV
+{
+friend std::istream& operator>>(std::istream& s, UI16_FLV& v);
+protected:
+	uint16_t val;
+public:
+	UI16_FLV():val(0){}
+	UI16_FLV(uint16_t v):val(v){}
+	operator uint16_t() const { return val; }
+};
+
+class SI16_SWF
+{
+friend std::istream& operator>>(std::istream& s, SI16_SWF& v);
+protected:
+	int16_t val;
+public:
+	SI16_SWF():val(0){}
+	SI16_SWF(int16_t v):val(v){}
+	operator int16_t(){ return val; }
+};
+
+class SI16_FLV
+{
+friend std::istream& operator>>(std::istream& s, SI16_FLV& v);
+protected:
+	int16_t val;
+public:
+	SI16_FLV():val(0){}
+	SI16_FLV(int16_t v):val(v){}
+	operator int16_t(){ return val; }
+};
+
+class UI24_SWF
+{
+friend std::istream& operator>>(std::istream& s, UI24_SWF& v);
+protected:
+	uint32_t val;
+public:
+	UI24_SWF():val(0){}
+	operator uint32_t() const { return val; }
+};
+
+class UI24_FLV
+{
+friend std::istream& operator>>(std::istream& s, UI24_FLV& v);
+protected:
+	uint32_t val;
+public:
+	UI24_FLV():val(0){}
+	operator uint32_t() const { return val; }
+};
+
+class SI24_SWF
+{
+friend std::istream& operator>>(std::istream& s, SI24_SWF& v);
+protected:
+	int32_t val;
+public:
+	SI24_SWF():val(0){}
+	operator int32_t() const { return val; }
+};
+
+class SI24_FLV
+{
+friend std::istream& operator>>(std::istream& s, SI24_FLV& v);
+protected:
+	int32_t val;
+public:
+	SI24_FLV():val(0){}
+	operator int32_t() const { return val; }
+};
+
+class UI32_SWF
+{
+friend std::istream& operator>>(std::istream& s, UI32_SWF& v);
+protected:
+	uint32_t val;
+public:
+	UI32_SWF():val(0){}
+	UI32_SWF(uint32_t v):val(v){}
+	operator uint32_t() const{ return val; }
+};
+
+class UI32_FLV
+{
+friend std::istream& operator>>(std::istream& s, UI32_FLV& v);
+protected:
+	uint32_t val;
+public:
+	UI32_FLV():val(0){}
+	UI32_FLV(uint32_t v):val(v){}
+	operator uint32_t() const{ return val; }
 };
 
 class STRING
@@ -426,32 +492,18 @@ public:
 	operator double(){ return val; }
 };
 
-class SI16
-{
-friend std::istream& operator>>(std::istream& s, SI16& v);
-private:
-	int16_t val;
-public:
-	SI16():val(0){}
-	SI16(int16_t v):val(v){}
-	operator int16_t(){ return val; }
-};
+//TODO: Really implement or suppress
+typedef UI32_SWF FIXED;
 
 //TODO: Really implement or suppress
-typedef UI32 SI32;
-
-//TODO: Really implement or suppress
-typedef UI32 FIXED;
-
-//TODO: Really implement or suppress
-typedef UI16 FIXED8;
+typedef UI16_SWF FIXED8;
 
 class RECORDHEADER
 {
 friend std::istream& operator>>(std::istream& s, RECORDHEADER& v);
 private:
-	UI16 CodeAndLen;
-	SI32 Length;
+	UI16_SWF CodeAndLen;
+	UI32_SWF Length;
 public:
 	unsigned int getLength() const
 	{
@@ -529,52 +581,107 @@ inline std::istream& operator>>(std::istream& s, UI8& v)
 	return s;
 }
 
-inline std::istream& operator>>(std::istream& s, SI16& v)
+inline std::istream& operator>>(std::istream& s, SI16_SWF& v)
 {
 	s.read((char*)&v.val,2);
+	v.val=LittleEndianToHost16(v.val);
 	return s;
 }
 
-inline std::istream& operator>>(std::istream& s, UI16& v)
+inline std::istream & operator>>(std::istream &s, SI16_FLV& v)
 {
 	s.read((char*)&v.val,2);
+	v.val=BigEndianToHost16(v.val);
 	return s;
 }
 
-inline std::istream& operator>>(std::istream& s, UI24& v)
+inline std::istream& operator>>(std::istream& s, UI16_SWF& v)
 {
-	assert_and_throw(v.val==0);
-	s.read((char*)&v.val,3);
+	s.read((char*)&v.val,2);
+	v.val=LittleEndianToHost16(v.val);
 	return s;
 }
 
-inline std::istream& operator>>(std::istream& s, SI24& v)
+inline std::istream& operator>>(std::istream& s, UI16_FLV& v)
 {
-	assert_and_throw(v.val==0);
-	s.read((char*)&v.val,3);
-	//Check for sign extesion
-	if(v.val&0x800000)
-		v.val|=0xff000000;
+	s.read((char*)&v.val,2);
+	v.val=BigEndianToHost16(v.val);
 	return s;
 }
 
-inline std::istream& operator>>(std::istream& s, UI32& v)
+inline std::istream& operator>>(std::istream& s, UI24_SWF& v)
+{
+	assert(v.val==0);
+	s.read((char*)&v.val,3);
+	v.val=LittleEndianToUnsignedHost24(v.val);
+	return s;
+}
+
+inline std::istream& operator>>(std::istream& s, UI24_FLV& v)
+{
+	assert(v.val==0);
+	s.read((char*)&v.val,3);
+	v.val=BigEndianToUnsignedHost24(v.val);
+	return s;
+}
+
+inline std::istream& operator>>(std::istream& s, SI24_SWF& v)
+{
+	assert(v.val==0);
+	s.read((char*)&v.val,3);
+	v.val=LittleEndianToSignedHost24(v.val);
+	return s;
+}
+
+inline std::istream& operator>>(std::istream& s, SI24_FLV& v)
+{
+	assert(v.val==0);
+	s.read((char*)&v.val,3);
+	v.val=BigEndianToSignedHost24(v.val);
+	return s;
+}
+
+inline std::istream& operator>>(std::istream& s, UI32_SWF& v)
 {
 	s.read((char*)&v.val,4);
+	v.val=LittleEndianToHost32(v.val);
+	return s;
+}
+
+inline std::istream& operator>>(std::istream& s, UI32_FLV& v)
+{
+	s.read((char*)&v.val,4);
+	v.val=BigEndianToHost32(v.val);
 	return s;
 }
 
 inline std::istream& operator>>(std::istream& s, FLOAT& v)
 {
-	s.read((char*)&v.val,4);
+	union float_reader
+	{
+		uint32_t dump;
+		float value;
+	};
+	float_reader dummy;
+	s.read((char*)&dummy.dump,4);
+	dummy.dump=LittleEndianToHost32(dummy.dump);
+	v.val=dummy.value;
 	return s;
 }
 
 inline std::istream& operator>>(std::istream& s, DOUBLE& v)
 {
+	union double_reader
+	{
+		uint64_t dump;
+		double value;
+	};
+	double_reader dummy;
 	// "Wacky format" is 45670123. Thanks to Gnash for reversing :-)
-	s.read(((char*)&v.val)+4,4);
-	s.read(((char*)&v.val),4);
+	s.read(((char*)&dummy.dump)+4,4);
+	s.read(((char*)&dummy.dump),4);
+	dummy.dump=LittleEndianToHost64(dummy.dump);
+	v.val=dummy.value;
 	return s;
 }
 
@@ -811,7 +918,7 @@ class LINESTYLE
 public:
 	LINESTYLE(int v):version(v){}
 	int version;
-	UI16 Width;
+	UI16_SWF Width;
 	RGBA Color;
 };
 
@@ -820,7 +927,7 @@ class LINESTYLE2
 public:
 	LINESTYLE2(int v):version(v),FillType(v){}
 	int version;
-	UI16 Width;
+	UI16_SWF Width;
 	UB StartCapStyle;
 	UB JointStyle;
 	UB HasFillFlag;
@@ -829,7 +936,7 @@ public:
 	UB PixelHintingFlag;
 	UB NoClose;
 	UB EndCapStyle;
-	UI16 MiterLimitFactor;
+	UI16_SWF MiterLimitFactor;
 	RGBA Color;
 	FILLSTYLE FillType;
 };
@@ -837,8 +944,8 @@ public:
 class MORPHLINESTYLE
 {
 public:
-	UI16 StartWidth;
-	UI16 EndWidth;
+	UI16_SWF StartWidth;
+	UI16_SWF EndWidth;
 	RGBA StartColor;
 	RGBA EndColor;
 };
@@ -938,11 +1045,11 @@ public:
 	UB StyleFlagsHasColor;
 	UB StyleFlagsHasYOffset;
 	UB StyleFlagsHasXOffset;
-	UI16 FontID;
+	UI16_SWF FontID;
 	RGBA TextColor;
-	SI16 XOffset;
-	SI16 YOffset;
-	UI16 TextHeight;
+	SI16_SWF XOffset;
+	SI16_SWF YOffset;
+	UI16_SWF TextHeight;
 	UI8 GlyphCount;
 	std::vector <GLYPHENTRY> GlyphEntries;
 	DefineTextTag* parent;
@@ -1134,8 +1241,8 @@ public:
 	UB ButtonStateDown;
 	UB ButtonStateOver;
 	UB ButtonStateUp;
-	UI16 CharacterID;
-	UI16 PlaceDepth;
+	UI16_SWF CharacterID;
+	UI16_SWF PlaceDepth;
 	MATRIX PlaceMatrix;
 	CXFORMWITHALPHA	ColorTransform;
 	FILTERLIST FilterList;
@@ -1150,7 +1257,7 @@ public:
 class CLIPEVENTFLAGS
 {
 public:
-	UI32 toParse;
+	uint32_t toParse;
 	bool isNull();
 };
 
@@ -1158,14 +1265,14 @@ class CLIPACTIONRECORD
 {
 public:
 	CLIPEVENTFLAGS EventFlags;
-	UI32 ActionRecordSize;
+	UI32_SWF ActionRecordSize;
 	bool isLast();
 };
 
 class CLIPACTIONS
 {
 public:
-	UI16 Reserved;
+	UI16_SWF Reserved;
 	CLIPEVENTFLAGS AllEventFlags;
 	std::vector<CLIPACTIONRECORD> ClipActionRecords;
 };
