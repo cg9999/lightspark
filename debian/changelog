@@ -1,3 +1,9 @@
+lightspark (0.4.5.1-0ubuntu2) natty; urgency=low
+
+  * Natty build
+
+ -- Henri Valta <cg@jakorasia.info>  Thu, 16 Dec 2010 21:46:03 +0200
+
 lightspark (0.4.5.1-0ubuntu1) maverick; urgency=low
 
   * Bugfix release
