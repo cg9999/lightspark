@@ -400,6 +400,8 @@ Dictionary::~Dictionary()
 void Dictionary::sinit(Class_base* c)
 {
 	c->setConstructor(Class<IFunction>::getFunction(_constructor));
+	c->super=Class<ASObject>::getClass();
+	c->max_level=c->super->max_level+1;
 }
 
 void Dictionary::buildTraits(ASObject* o)
@@ -447,11 +449,11 @@ void Dictionary::deleteVariableByMultiname(const multiname& name)
 	map<ASObject*, ASObject*>::iterator it;
 	getIteratorByMultiname(name, it);
 	
-	assert_and_throw(it != data.end());
-	
-	it->second->decRef();
-	data.erase(it);
-
+	if(it != data.end())
+	{
+		it->second->decRef();
+		data.erase(it);
+	}
 	//This is ugly, but at least we are sure that we own name_o
 	multiname* tmp=const_cast<multiname*>(&name);
 	tmp->name_o=NULL;
@@ -539,17 +541,19 @@ void Dictionary::getIteratorByMultiname(const multiname& name, map<ASObject*, AS
 
 ASObject* Dictionary::getVariableByMultiname(const multiname& name, bool skip_impl, ASObject* base)
 {
-	assert_and_throw(!skip_impl);
-	assert_and_throw(implEnable);
-	
-	map<ASObject*, ASObject*>::iterator it;
-	getIteratorByMultiname(name, it);
-	
-	if (it == data.end())
-		return new Undefined;
+	if(!skip_impl && implEnable)
+	{
+		map<ASObject*, ASObject*>::iterator it;
+		getIteratorByMultiname(name, it);
 		
-	it->second->incRef();
-	return it->second;
+		if (it != data.end())
+		{
+			it->second->incRef();
+			return it->second;
+		}
+	}
+	//Try with the base implementation
+	return ASObject::getVariableByMultiname(name, skip_impl, base);
 }
 
 bool Dictionary::hasNext(unsigned int& index, bool& out)
@@ -570,6 +574,7 @@ bool Dictionary::nextName(unsigned int index, ASObject*& out)
 	for(unsigned int i=0;i<index;i++)
 		++it;
 	out=it->first;
+	out->incRef();
 	return true;
 }
 

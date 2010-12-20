@@ -1481,10 +1481,16 @@ void Number::sinit(Class_base* c)
 	//Must create and link the number the hard way
 	Number* ninf=new Number(-numeric_limits<double>::infinity());
 	Number* pinf=new Number(numeric_limits<double>::infinity());
+	Number* pmax=new Number(numeric_limits<double>::max());
+	Number* pmin=new Number(numeric_limits<double>::min());
 	ninf->setPrototype(c);
 	pinf->setPrototype(c);
+	pmax->setPrototype(c);
+	pmin->setPrototype(c);
 	c->setVariableByQName("NEGATIVE_INFINITY","",ninf);
 	c->setVariableByQName("POSITIVE_INFINITY","",pinf);
+	c->setVariableByQName("MAX_VALUE","",pmax);
+	c->setVariableByQName("MIN_VALUE","",pmin);
 	c->setMethodByQName("toString",AS3,Class<IFunction>::getFunction(Number::_toString),true);
 }
 
@@ -2924,22 +2930,9 @@ void IFunction::sinit(Class_base* c)
 	c->setMethodByQName("apply",AS3,Class<IFunction>::getFunction(IFunction::apply),true);
 }
 
-Class_function* Class_function::getClass()
+Class_function::Class_function(IFunction* _f, ASObject* _p):Class_base(QName("Function","")),f(_f),asprototype(_p)
 {
-	//We check if we are registered in the class map
-	//if not we register ourselves (see also Class<T>::getClass)
-	std::map<QName, Class_base*>::iterator it=sys->classes.find(QName("Function",""));
-	Class_function* ret=NULL;
-	if(it==sys->classes.end()) //This class is not yet in the map, create it
-	{
-		ret=new Class_function();
-		sys->classes.insert(std::make_pair(QName("Function",""),ret));
-	}
-	else
-		ret=static_cast<Class_function*>(it->second);
-
-	ret->incRef();
-	return ret;
+	setPrototype(Class<IFunction>::getClass());
 }
 
 const std::vector<Class_base*>& Class_base::getInterfaces() const

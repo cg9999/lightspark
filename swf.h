@@ -163,7 +163,6 @@ private:
 	friend class SystemState::EngineCreator;
 	ThreadPool* threadPool;
 	TimerThread* timerThread;
-	ParseThread* parseThread;
 	sem_t terminated;
 	float renderRate;
 	bool error;
@@ -266,6 +265,10 @@ public:
 	bool removeJob(ITickJob* job);
 	void setRenderRate(float rate);
 	float getRenderRate();
+	/*
+	   This is not supposed to be used in the VM, it's only useful to create the Downloader when plugin is being used
+	*/
+	LoaderInfo* getLoaderInfo() const { return loaderInfo; }
 
 	//Stuff to be done once for process and not for plugin instance
 	static void staticInit() DLL_PUBLIC;

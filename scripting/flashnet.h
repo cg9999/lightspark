@@ -40,12 +40,22 @@ friend ASObject* sendToURL(ASObject* obj,ASObject* const* args, const unsigned i
 private:
 	tiny_string url;
 public:
+	enum METHOD { GET=0, POST };
+	METHOD method;
 	URLRequest();
 	static void sinit(Class_base*);
 	static void buildTraits(ASObject* o);
 	ASFUNCTION(_constructor);
 	ASFUNCTION(_getURL);
 	ASFUNCTION(_setURL);
+	ASFUNCTION(_getMethod);
+	ASFUNCTION(_setMethod);
+};
+
+class URLRequestMethod: public ASObject
+{
+public:
+	static void sinit(Class_base*);
 };
 
 class URLVariables: public ASObject

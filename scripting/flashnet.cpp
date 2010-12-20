@@ -34,13 +34,14 @@ SET_NAMESPACE("flash.net");
 REGISTER_CLASS_NAME(URLLoader);
 REGISTER_CLASS_NAME(URLLoaderDataFormat);
 REGISTER_CLASS_NAME(URLRequest);
+REGISTER_CLASS_NAME(URLRequestMethod);
 REGISTER_CLASS_NAME(URLVariables);
 REGISTER_CLASS_NAME(SharedObject);
 REGISTER_CLASS_NAME(ObjectEncoding);
 REGISTER_CLASS_NAME(NetConnection);
 REGISTER_CLASS_NAME(NetStream);
 
-URLRequest::URLRequest()
+URLRequest::URLRequest():method(GET)
 {
 }
 
@@ -49,6 +50,8 @@ void URLRequest::sinit(Class_base* c)
 	c->setConstructor(Class<IFunction>::getFunction(_constructor));
 	c->setSetterByQName("url","",Class<IFunction>::getFunction(_setURL),true);
 	c->setGetterByQName("url","",Class<IFunction>::getFunction(_getURL),true);
+	c->setSetterByQName("method","",Class<IFunction>::getFunction(_setMethod),true);
+	c->setGetterByQName("method","",Class<IFunction>::getFunction(_getMethod),true);
 }
 
 void URLRequest::buildTraits(ASObject* o)
@@ -76,6 +79,37 @@ ASFUNCTIONBODY(URLRequest,_getURL)
 {
 	URLRequest* th=static_cast<URLRequest*>(obj);
 	return Class<ASString>::getInstanceS(th->url);
+}
+
+ASFUNCTIONBODY(URLRequest,_setMethod)
+{
+	URLRequest* th=static_cast<URLRequest*>(obj);
+	const tiny_string& tmp=args[0]->toString();
+	if(tmp=="GET")
+		th->method=GET;
+	else if(tmp=="POST")
+		th->method=POST;
+	else
+		throw UnsupportedException("Unsupported method in URLLoader");
+	return NULL;
+}
+
+ASFUNCTIONBODY(URLRequest,_getMethod)
+{
+	URLRequest* th=static_cast<URLRequest*>(obj);
+	switch(th->method)
+	{
+		case GET:
+			return Class<ASString>::getInstanceS("GET");
+		case POST:
+			return Class<ASString>::getInstanceS("POST");
+	}
+}
+
+void URLRequestMethod::sinit(Class_base* c)
+{
+	c->setVariableByQName("GET","",Class<ASString>::getInstanceS("GET"));
+	c->setVariableByQName("POST","",Class<ASString>::getInstanceS("POST"));
 }
 
 URLLoader::URLLoader():dataFormat("text"),data(NULL),downloader(NULL),executingAbort(false)
@@ -210,7 +244,7 @@ void URLLoader::execute()
 				ByteArray* byteArray=Class<ByteArray>::getInstanceS();
 				byteArray->acquireBuffer(buf,downloader->getLength());
 				data=byteArray;
-				//The buffers must not be deleted, it's now handled bt the ByteArray instance
+				//The buffers must not be deleted, it's now handled by the ByteArray instance
 			}
 			else if(dataFormat=="text")
 			{

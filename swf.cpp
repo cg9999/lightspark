@@ -152,8 +152,8 @@ void SystemState::staticDeinit()
 #endif
 }
 
-SystemState::SystemState(ParseThread* p, uint32_t fileSize):
-	RootMovieClip(NULL,true),parseThread(p),renderRate(0),error(false),shutdown(false),
+SystemState::SystemState(ParseThread* parseThread, uint32_t fileSize):
+	RootMovieClip(NULL,true),renderRate(0),error(false),shutdown(false),
 	renderThread(NULL),inputThread(NULL),engine(NONE),fileDumpAvailable(0),
 	waitingForDump(false),vmVersion(VMNONE),childPid(0),useGnashFallback(false),
 	showProfilingData(false),showDebug(false),currentVm(NULL),finalizingDestruction(false),
@@ -500,7 +500,7 @@ void SystemState::delayedStopping(SystemState* th)
 {
 	sys=th;
 	//This is called from the plugin, also kill the stream
-	th->npapiParams.stream->stop();
+	th->npapiParams.stopDownloaderHelper(th->npapiParams.helperArg);
 	th->stopEngines();
 	sys=NULL;
 }
@@ -957,6 +957,7 @@ void ParseThread::threadAbort()
 
 void RootMovieClip::initialize()
 {
+	//NOTE: No references to frames must be done here!
 	if(!initialized && sys->currentVm)
 	{
 		initialized=true;
@@ -1079,6 +1080,8 @@ void RootMovieClip::commitFrame(bool another)
 	{
 		//Let's initialize the first frame of this movieclip
 		bootstrap();
+		//From now on no more references to frames must be done! See NOTE in initialize
+		l.unlock();
 		//Root movie clips are initialized now, after the first frame is really ready 
 		initialize();
 		//Now the bindings are effective
