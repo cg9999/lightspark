@@ -848,6 +848,8 @@ ASFUNCTIONBODY(ASString,search)
 			options|=PCRE_CASELESS;
 		if(re->extended)
 			options|=PCRE_EXTENDED;
+		if(re->multiline)
+			options|=PCRE_MULTILINE;
 		pcre* pcreRE=pcre_compile(re->re.c_str(), options, &error, &errorOffset,NULL);
 		if(error)
 			return abstract_i(ret);
@@ -899,6 +901,8 @@ ASFUNCTIONBODY(ASString,match)
 			options|=PCRE_CASELESS;
 		if(re->extended)
 			options|=PCRE_EXTENDED;
+		if(re->multiline)
+			options|=PCRE_MULTILINE;
 		pcre* pcreRE=pcre_compile(re->re.c_str(), options, &error, &errorOffset,NULL);
 		if(error)
 			return new Null;
@@ -971,6 +975,8 @@ ASFUNCTIONBODY(ASString,split)
 			options|=PCRE_CASELESS;
 		if(re->extended)
 			options|=PCRE_EXTENDED;
+		if(re->multiline)
+			options|=PCRE_MULTILINE;
 		pcre* pcreRE=pcre_compile(re->re.c_str(), options, &error, &offset,NULL);
 		if(error)
 			return ret;
@@ -1503,13 +1509,18 @@ void Date::sinit(Class_base* c)
 	c->super=Class<ASObject>::getClass();
 	c->max_level=c->super->max_level+1;
 	c->setConstructor(Class<IFunction>::getFunction(_constructor));
-	c->setMethodByQName("getTimezoneOffset","",Class<IFunction>::getFunction(getTimezoneOffset),true);
+	c->setMethodByQName("getTimezoneOffset",AS3,Class<IFunction>::getFunction(getTimezoneOffset),true);
 	c->setMethodByQName("valueOf","",Class<IFunction>::getFunction(valueOf),true);
 	c->setMethodByQName("getTime",AS3,Class<IFunction>::getFunction(getTime),true);
-	c->setMethodByQName("getFullYear","",Class<IFunction>::getFunction(getFullYear),true);
+	c->setMethodByQName("getFullYear",AS3,Class<IFunction>::getFunction(getFullYear),true);
 	c->setMethodByQName("getHours",AS3,Class<IFunction>::getFunction(getHours),true);
 	c->setMethodByQName("getMinutes",AS3,Class<IFunction>::getFunction(getMinutes),true);
 	c->setMethodByQName("getSeconds",AS3,Class<IFunction>::getFunction(getMinutes),true);
+	c->setMethodByQName("getUTCFullYear",AS3,Class<IFunction>::getFunction(getUTCFullYear),true);
+	c->setMethodByQName("getUTCMonth",AS3,Class<IFunction>::getFunction(getUTCMonth),true);
+	c->setMethodByQName("getUTCDate",AS3,Class<IFunction>::getFunction(getUTCDate),true);
+	c->setMethodByQName("getUTCHours",AS3,Class<IFunction>::getFunction(getUTCHours),true);
+	c->setMethodByQName("getUTCMinutes",AS3,Class<IFunction>::getFunction(getUTCMinutes),true);
 	//o->setVariableByQName("toString",AS3,Class<IFunction>::getFunction(ASObject::_toString));
 }
 
@@ -1534,6 +1545,36 @@ ASFUNCTIONBODY(Date,getTimezoneOffset)
 {
 	LOG(LOG_NOT_IMPLEMENTED,_("getTimezoneOffset"));
 	return abstract_d(120);
+}
+
+ASFUNCTIONBODY(Date,getUTCFullYear)
+{
+	Date* th=static_cast<Date*>(obj);
+	return abstract_d(th->year);
+}
+
+ASFUNCTIONBODY(Date,getUTCMonth)
+{
+	Date* th=static_cast<Date*>(obj);
+	return abstract_d(th->month);
+}
+
+ASFUNCTIONBODY(Date,getUTCDate)
+{
+	Date* th=static_cast<Date*>(obj);
+	return abstract_d(th->date);
+}
+
+ASFUNCTIONBODY(Date,getUTCHours)
+{
+	Date* th=static_cast<Date*>(obj);
+	return abstract_d(th->hour);
+}
+
+ASFUNCTIONBODY(Date,getUTCMinutes)
+{
+	Date* th=static_cast<Date*>(obj);
+	return abstract_d(th->minute);
 }
 
 ASFUNCTIONBODY(Date,getFullYear)
@@ -2075,7 +2116,7 @@ bool Null::isEqual(ASObject* r)
 		return false;
 }
 
-RegExp::RegExp():global(false),ignoreCase(false),extended(false),lastIndex(0)
+RegExp::RegExp():global(false),ignoreCase(false),extended(false),multiline(false),lastIndex(0)
 {
 }
 
@@ -2113,8 +2154,10 @@ ASFUNCTIONBODY(RegExp,_constructor)
 				case 'x':
 					th->extended=true;
 					break;
-				case 's':
 				case 'm':
+					th->multiline=true;
+					break;
+				case 's':
 					throw UnsupportedException("RegExp not completely implemented");
 
 			}
@@ -2132,44 +2175,89 @@ ASFUNCTIONBODY(RegExp,_getGlobal)
 ASFUNCTIONBODY(RegExp,exec)
 {
 	RegExp* th=static_cast<RegExp*>(obj);
-	pcrecpp::RE_Options opt;
-	opt.set_caseless(th->ignoreCase);
-	opt.set_extended(th->extended);
-
-	pcrecpp::RE pcreRE(th->re,opt);
-	assert_and_throw(th->lastIndex==0);
+	assert_and_throw(argslen==1);
 	const tiny_string& arg0=args[0]->toString();
-	LOG(LOG_CALLS,_("re: ") << th->re);
-	int numberOfCaptures=pcreRE.NumberOfCapturingGroups();
-	LOG(LOG_CALLS,_("capturing groups ") << numberOfCaptures);
-	assert_and_throw(numberOfCaptures!=-1);
-	//The array of captured groups
-	pcrecpp::Arg** captures=new pcrecpp::Arg*[numberOfCaptures];
-	//The array of strings
-	string* s=new string[numberOfCaptures];
-	for(int i=0;i<numberOfCaptures;i++)
-		captures[i]=new pcrecpp::Arg(&s[i]);
-
-	int consumed;
-	bool matched=pcreRE.DoMatch(arg0.raw_buf(),pcrecpp::RE::ANCHOR_START,&consumed,captures,numberOfCaptures);
-	ASObject* ret;
-	if(matched)
+	const char* error;
+	int errorOffset;
+	int options=0;
+	if(th->ignoreCase)
+		options|=PCRE_CASELESS;
+	if(th->extended)
+		options|=PCRE_EXTENDED;
+	if(th->multiline)
+		options|=PCRE_MULTILINE;
+	if(!th->global)
+		options|=PCRE_ANCHORED;
+	pcre* pcreRE=pcre_compile(th->re.c_str(), options, &error, &errorOffset,NULL);
+	if(error)
+		return new Null;
+	//Verify that 30 for ovector is ok, it must be at least (captGroups+1)*3
+	int capturingGroups;
+	int infoOk=pcre_fullinfo(pcreRE, NULL, PCRE_INFO_CAPTURECOUNT, &capturingGroups);
+	if(infoOk!=0)
 	{
-		Array* a=Class<Array>::getInstanceS();
-		for(int i=0;i<numberOfCaptures;i++)
-			a->push(Class<ASString>::getInstanceS(s[i]));
-		args[0]->incRef();
-		a->setVariableByQName("input","",args[0]);
-		ret=a;
-		//TODO: add index field (not possible with current PCRECPP)
+		pcre_free(pcreRE);
+		return new Null;
 	}
-	else
-		ret=new Null;
+	assert_and_throw(capturingGroups<10);
+	//Get information about named capturing groups
+	int namedGroups;
+	infoOk=pcre_fullinfo(pcreRE, NULL, PCRE_INFO_NAMECOUNT, &namedGroups);
+	if(infoOk!=0)
+	{
+		pcre_free(pcreRE);
+		return new Null;
+	}
+	//Get information about the size of named entries
+	int namedSize;
+	infoOk=pcre_fullinfo(pcreRE, NULL, PCRE_INFO_NAMEENTRYSIZE, &namedSize);
+	if(infoOk!=0)
+	{
+		pcre_free(pcreRE);
+		return new Null;
+	}
+	struct nameEntry
+	{
+		uint16_t number;
+		char name[0];
+	};
+	char* entries;
+	infoOk=pcre_fullinfo(pcreRE, NULL, PCRE_INFO_NAMETABLE, &entries);
+	if(infoOk!=0)
+	{
+		pcre_free(pcreRE);
+		return new Null;
+	}
 
-	delete[] captures;
-	delete[] s;
-
-	return ret;
+	int ovector[30];
+	int offset=(th->global)?th->lastIndex:0;
+	const char* str=arg0.raw_buf();
+	int strLen=arg0.len();
+	int rc=pcre_exec(pcreRE, NULL, str, strLen, offset, 0, ovector, 30);
+	if(rc<=0)
+	{
+		//No matches or error
+		pcre_free(pcreRE);
+		return new Null;
+	}
+	Array* a=Class<Array>::getInstanceS();
+	//Push the whole result and the captured strings
+	for(int i=0;i<capturingGroups+1;i++)
+		a->push(Class<ASString>::getInstanceS(str+ovector[i*2],ovector[i*2+1]-ovector[i*2]));
+	args[0]->incRef();
+	a->setVariableByQName("input","",args[0]);
+	a->setVariableByQName("index","",abstract_i(ovector[0]));
+	for(int i=0;i<namedGroups;i++)
+	{
+		nameEntry* entry=(nameEntry*)entries;
+		uint16_t num=BigEndianToHost16(entry->number);
+		ASObject* captured=a->at(num);
+		captured->incRef();
+		a->setVariableByQName(entry->name,"",captured);
+		entries+=namedSize;
+	}
+	th->lastIndex=ovector[1];
+	return a;
 }
 
 ASFUNCTIONBODY(RegExp,test)
@@ -2178,6 +2266,7 @@ ASFUNCTIONBODY(RegExp,test)
 	pcrecpp::RE_Options opt;
 	opt.set_caseless(th->ignoreCase);
 	opt.set_extended(th->extended);
+	opt.set_multiline(th->multiline);
 
 	pcrecpp::RE pcreRE(th->re,opt);
 	assert_and_throw(th->lastIndex==0);
@@ -2345,6 +2434,8 @@ ASFUNCTIONBODY(ASString,replace)
 			options|=PCRE_CASELESS;
 		if(re->extended)
 			options|=PCRE_EXTENDED;
+		if(re->multiline)
+			options|=PCRE_MULTILINE;
 		pcre* pcreRE=pcre_compile(re->re.c_str(), options, &error, &errorOffset,NULL);
 		if(error)
 			return ret;
