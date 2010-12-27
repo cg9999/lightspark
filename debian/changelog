@@ -1,3 +1,15 @@
+lightspark (0.4.5.1-1+git20101227) natty; urgency=low
+
+  * Update to 5f6b06b41b8e005e2ea3
+
+ -- Henri Valta <cg@jakorasia.info>  Mon, 27 Dec 2010 06:54:32 +0200
+
+lightspark (0.4.5.1-1+git20101225) natty; urgency=low
+
+  * Update to 2d46a7b0eb71b9a5676a
+
+ -- Henri Valta <cg@jakorasia.info>  Sat, 25 Dec 2010 12:26:46 +0200
+
 lightspark (0.4.5.1-1+git20101220) natty; urgency=low
 
   * Update to 4fb02d66e9c45a8ed0da
