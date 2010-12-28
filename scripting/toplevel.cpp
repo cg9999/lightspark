@@ -19,7 +19,6 @@
 
 #include <list>
 #include <algorithm>
-#include <pcrecpp.h>
 #include <pcre.h>
 #include <string.h>
 #include <sstream>
@@ -27,6 +26,7 @@
 #define _USE_MATH_DEFINES
 #include <cmath>
 #include <limits>
+#include <cstdio>
 
 #include "abc.h"
 #include "toplevel.h"
@@ -65,6 +65,8 @@ REGISTER_CLASS_NAME(SyntaxError);
 REGISTER_CLASS_NAME(TypeError);
 REGISTER_CLASS_NAME(URIError);
 REGISTER_CLASS_NAME(VerifyError);
+REGISTER_CLASS_NAME(XML);
+REGISTER_CLASS_NAME(XMLList);
 
 Array::Array()
 {
@@ -499,48 +501,146 @@ ASFUNCTIONBODY(Array,_push)
 	return abstract_i(th->size());
 }
 
-ASMovieClipLoader::ASMovieClipLoader()
+XML::XML():root(NULL),node(NULL)
 {
 }
 
-ASFUNCTIONBODY(ASMovieClipLoader,constructor)
+XML::XML(XML* _r, xmlpp::Node* _n):root(_r),node(_n)
 {
-	LOG(LOG_NOT_IMPLEMENTED,_("Called MovieClipLoader constructor"));
+	assert(root);
+}
+
+XML::~XML()
+{
+	if(root)
+		root->decRef();
+}
+
+void XML::sinit(Class_base* c)
+{
+	c->super=Class<ASObject>::getClass();
+	c->max_level=c->super->max_level+1;
+	c->setConstructor(Class<IFunction>::getFunction(_constructor));
+}
+
+ASFUNCTIONBODY(XML,_constructor)
+{
+	XML* th=Class<XML>::cast(obj);
+	if(argslen==0)
+		return NULL;
+	assert_and_throw(argslen==1 && args[0]->getObjectType()==T_STRING);
+	ASString* str=Class<ASString>::cast(args[0]);
+	th->parser.parse_memory_raw((const unsigned char*)str->data.c_str(), str->data.size());
+	th->node=th->parser.get_document()->get_root_node();
 	return NULL;
 }
 
-ASFUNCTIONBODY(ASMovieClipLoader,addListener)
+void XML::recusiveGetDescendantsByQName(XML* root, xmlpp::Node* node, const tiny_string& name, const tiny_string& ns, std::vector<XML*>& ret)
 {
-	LOG(LOG_NOT_IMPLEMENTED,_("Called MovieClipLoader::addListener"));
-	return NULL;
+	assert(root);
+	//Check if this node is being requested
+	if(node->get_name()==name.raw_buf())
+	{
+		root->incRef();
+		ret.push_back(Class<XML>::getInstanceS(root, node));
+	}
+	//NOTE: Creating a temporary list is quite a large overhead, but there is no way in libxml++ to access the first child
+	const xmlpp::Node::NodeList& list=node->get_children();
+	xmlpp::Node::NodeList::const_iterator it=list.begin();
+	for(;it!=list.end();it++)
+		recusiveGetDescendantsByQName(root, *it, name, ns, ret);
 }
 
-ASXML::ASXML()
+void XML::getDescendantsByQName(const tiny_string& name, const tiny_string& ns, std::vector<XML*>& ret)
 {
-	xml_buf=new char[1024*20];
-	xml_index=0;
+	assert(node);
+	assert_and_throw(ns=="");
+	recusiveGetDescendantsByQName((root)?(root):this, node, name, ns, ret);
 }
 
-ASFUNCTIONBODY(ASXML,constructor)
+ASObject* XML::getVariableByMultiname(const multiname& name, bool skip_impl, ASObject* base)
 {
-	LOG(LOG_NOT_IMPLEMENTED,_("Called XML constructor"));
-	return NULL;
+	if(!name.isAttribute)
+		return ASObject::getVariableByMultiname(name, skip_impl, base);
+	//Lookup attribute
+	//TODO: support namespaces
+	assert_and_throw(name.ns.size()>0 && name.ns[0].name=="");
+	//Normalize the name to the string form
+	tiny_string attributeName=name.normalizedName();
+	assert(node);
+	//To have attributes we must be an Element
+	xmlpp::Element* element=dynamic_cast<xmlpp::Element*>(node);
+	if(element==NULL)
+		return NULL;
+	xmlpp::Attribute* attr=element->get_attribute(attributeName.raw_buf());
+	ASObject* ret=Class<XML>::getInstanceS((root)?(root):this, attr);
+	//The new object will be incReffed by the calling code
+	ret->fake_decRef();
+	return ret;
 }
 
-
-size_t ASXML::write_data(void *buffer, size_t size, size_t nmemb, void *userp)
+void XMLList::sinit(Class_base* c)
 {
-	ASXML* th=(ASXML*)userp;
-	memcpy(th->xml_buf+th->xml_index,buffer,size*nmemb);
-	th->xml_index+=size*nmemb;
-	return size*nmemb;
+	c->super=Class<ASObject>::getClass();
+	c->max_level=c->super->max_level+1;
+	//c->setConstructor(Class<IFunction>::getFunction(_constructor));
+	c->setMethodByQName("length","",Class<IFunction>::getFunction(_getLength),true);
 }
 
-ASFUNCTIONBODY(ASXML,load)
+ASFUNCTIONBODY(XMLList,_getLength)
 {
-	LOG(LOG_NOT_IMPLEMENTED,_("Called ASXML::load ") << args[0]->toString());
-	throw UnsupportedException("ASXML::load not completely implemented");
+	XMLList* th=Class<XMLList>::cast(obj);
+	assert_and_throw(argslen==0);
+	return abstract_i(th->nodes.size());
 }
+
+ASObject* XMLList::getVariableByMultiname(const multiname& name, bool skip_impl, ASObject* base)
+{
+	if(skip_impl || !implEnable)
+		return ASObject::getVariableByMultiname(name,skip_impl,base);
+		
+	assert_and_throw(name.ns.size()>0);
+	if(name.ns[0].name!="")
+		return ASObject::getVariableByMultiname(name,skip_impl,base);
+
+	unsigned int index=0;
+	if(!Array::isValidMultiname(name,index))
+		return ASObject::getVariableByMultiname(name,skip_impl,base);
+
+	if(index<nodes.size())
+		return nodes[index];
+	else
+		return NULL;
+}
+
+/*bool XMLList::nextValue(unsigned int index, ASObject*& out)
+{
+	__asm__("int $3");
+	assert_and_throw(implEnable);
+	assert_and_throw(index<nodes.size());
+	out=nodes[index];
+	return true;
+}
+
+bool XMLList::hasNext(unsigned int& index, bool& out)
+{
+	__asm__("int $3");
+	assert_and_throw(implEnable);
+	out=index<nodes.size();
+	index++;
+	return true;
+}
+
+bool XMLList::nextName(unsigned int index, ASObject*& out)
+{
+	__asm__("int $3");
+	assert(index>0);
+	index--;
+	assert_and_throw(implEnable);
+	assert_and_throw(index<nodes.size());
+	out=abstract_i(index);
+	return true;
+}*/
 
 bool Array::isEqual(ASObject* r)
 {
@@ -634,7 +734,7 @@ ASObject* Array::getVariableByMultiname(const multiname& name, bool skip_impl, A
 		return ret;
 	}
 	else
-		return new Undefined;
+		return NULL;
 }
 
 void Array::setVariableByMultiname_i(const multiname& name, intptr_t value)
@@ -866,7 +966,7 @@ ASFUNCTIONBODY(ASString,search)
 		int offset=0;
 		//Global is not used in search
 		int rc=pcre_exec(pcreRE, NULL, th->data.c_str(), th->data.size(), offset, 0, ovector, 30);
-		if(rc<=0)
+		if(rc<0)
 		{
 			//No matches or error
 			pcre_free(pcreRE);
@@ -920,7 +1020,7 @@ ASFUNCTIONBODY(ASString,match)
 		do
 		{
 			int rc=pcre_exec(pcreRE, NULL, th->data.c_str(), th->data.size(), offset, 0, ovector, 30);
-			if(rc<=0)
+			if(rc<0)
 			{
 				//No matches or error
 				pcre_free(pcreRE);
@@ -996,7 +1096,7 @@ ASFUNCTIONBODY(ASString,split)
 		{
 			int rc=pcre_exec(pcreRE, NULL, th->data.c_str(), th->data.size(), offset, 0, ovector, 30);
 			end=ovector[0];
-			if(rc<=0)
+			if(rc<0)
 				end=th->data.size();
 			ASString* s=Class<ASString>::getInstanceS(th->data.substr(offset,end-offset));
 			ret->push(s);
@@ -2234,7 +2334,7 @@ ASFUNCTIONBODY(RegExp,exec)
 	const char* str=arg0.raw_buf();
 	int strLen=arg0.len();
 	int rc=pcre_exec(pcreRE, NULL, str, strLen, offset, 0, ovector, 30);
-	if(rc<=0)
+	if(rc<0)
 	{
 		//No matches or error
 		pcre_free(pcreRE);
@@ -2263,16 +2363,30 @@ ASFUNCTIONBODY(RegExp,exec)
 ASFUNCTIONBODY(RegExp,test)
 {
 	RegExp* th=static_cast<RegExp*>(obj);
-	pcrecpp::RE_Options opt;
-	opt.set_caseless(th->ignoreCase);
-	opt.set_extended(th->extended);
-	opt.set_multiline(th->multiline);
 
-	pcrecpp::RE pcreRE(th->re,opt);
-	assert_and_throw(th->lastIndex==0);
-	const tiny_string& arg0=args[0]->toString();
+	const tiny_string& arg0 = args[0]->toString();
 
-	bool ret=pcreRE.PartialMatch(arg0.raw_buf());
+	int options = 0;
+	if(th->ignoreCase)
+		options |= PCRE_CASELESS;
+	if(th->extended)
+		options |= PCRE_EXTENDED;
+	if(th->multiline)
+		options |= PCRE_MULTILINE;
+
+	const char * error;
+	int errorOffset;
+	pcre * pcreRE = pcre_compile(th->re.c_str(), options, &error, &errorOffset, NULL);
+	if(error)
+		return new Null;
+
+	const char* str=arg0.raw_buf();
+	int strLen=arg0.len();
+	int ovector[30];
+	int offset=(th->global)?th->lastIndex:0;
+	int rc = pcre_exec(pcreRE, NULL, str, strLen, offset, 0, ovector, 30);
+	bool ret = (rc >= 0);
+
 	return abstract_b(ret);
 }
 
@@ -2454,7 +2568,7 @@ ASFUNCTIONBODY(ASString,replace)
 		do
 		{
 			int rc=pcre_exec(pcreRE, NULL, ret->data.c_str(), ret->data.size(), offset, 0, ovector, 30);
-			if(rc<=0)
+			if(rc<0)
 			{
 				//No matches or error
 				pcre_free(pcreRE);
