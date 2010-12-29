@@ -529,14 +529,17 @@ private:
 	static bool _not(ASObject*);
 	static bool equals(ASObject*,ASObject*);
 	static number_t negate(ASObject*);
+	static intptr_t negate_i(ASObject*);
 	static void pop();
 	static ASObject* typeOf(ASObject*);
 	static void _throw(call_context* th);
+	static ASObject* asType(ASObject* obj, multiname* name);
 	static ASObject* asTypelate(ASObject* type, ASObject* obj);
 	static bool isTypelate(ASObject* type, ASObject* obj);
 	static bool isType(ASObject* obj, multiname* name);
 	static void swap();
 	static ASObject* add(ASObject*,ASObject*);
+	static intptr_t add_i(ASObject*,ASObject*);
 	static ASObject* add_oi(ASObject*,intptr_t);
 	static ASObject* add_od(ASObject*,number_t);
 	static uintptr_t bitAnd(ASObject*,ASObject*);
@@ -555,6 +558,7 @@ private:
 	static number_t divide(ASObject*,ASObject*);
 	static intptr_t modulo(ASObject*,ASObject*);
 	static number_t subtract(ASObject*,ASObject*);
+	static intptr_t subtract_i(ASObject*,ASObject*);
 	static number_t subtract_oi(ASObject*, intptr_t);
 	static number_t subtract_io(intptr_t, ASObject*);
 	static number_t subtract_do(number_t, ASObject*);
@@ -653,13 +657,24 @@ public:
 class DoABCTag: public ControlTag
 {
 private:
-	UI32_SWF Flags;
-	STRING Name;
 	ABCContext* context;
 	pthread_t thread;
 public:
 	DoABCTag(RECORDHEADER h, std::istream& in);
 	~DoABCTag();
+	void execute(RootMovieClip* root);
+};
+
+class DoABCDefineTag: public ControlTag
+{
+private:
+	UI32_SWF Flags;
+	STRING Name;
+	ABCContext* context;
+	pthread_t thread;
+public:
+	DoABCDefineTag(RECORDHEADER h, std::istream& in);
+	~DoABCDefineTag();
 	void execute(RootMovieClip* root);
 };
 

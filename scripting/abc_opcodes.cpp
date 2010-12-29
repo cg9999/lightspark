@@ -228,6 +228,15 @@ number_t ABCVm::negate(ASObject* v)
 	return ret;
 }
 
+intptr_t ABCVm::negate_i(ASObject* o)
+{
+	LOG(LOG_CALLS,_("negate_i"));
+
+	int n=o->toInt();
+	o->decRef();
+	return -n;
+}
+
 uintptr_t ABCVm::bitNot(ASObject* val)
 {
 	uintptr_t i1=val->toUInt();
@@ -926,6 +935,24 @@ number_t ABCVm::subtract_io(intptr_t val2, ASObject* val1)
 	return num1-num2;
 }
 
+intptr_t ABCVm::subtract_i(ASObject* val2, ASObject* val1)
+{
+	if(val1->getObjectType()==T_UNDEFINED ||
+		val2->getObjectType()==T_UNDEFINED)
+	{
+		//HACK
+		LOG(LOG_NOT_IMPLEMENTED,_("subtract_i: HACK"));
+		return 0;
+	}
+	int num2=val2->toInt();
+	int num1=val1->toInt();
+
+	val1->decRef();
+	val2->decRef();
+	LOG(LOG_CALLS,_("subtract_i ") << num1 << '-' << num2);
+	return num1-num2;
+}
+
 number_t ABCVm::subtract(ASObject* val2, ASObject* val1)
 {
 	if(val1->getObjectType()==T_UNDEFINED ||
@@ -935,8 +962,8 @@ number_t ABCVm::subtract(ASObject* val2, ASObject* val1)
 		LOG(LOG_NOT_IMPLEMENTED,_("subtract: HACK"));
 		return 0;
 	}
-	int num2=val2->toInt();
-	int num1=val1->toInt();
+	number_t num2=val2->toNumber();
+	number_t num1=val1->toNumber();
 
 	val1->decRef();
 	val2->decRef();
@@ -1010,6 +1037,24 @@ ASObject* ABCVm::add(ASObject* val2, ASObject* val1)
 		return new Undefined;
 	}
 
+}
+
+intptr_t ABCVm::add_i(ASObject* val2, ASObject* val1)
+{
+	if(val1->getObjectType()==T_UNDEFINED ||
+		val2->getObjectType()==T_UNDEFINED)
+	{
+		//HACK
+		LOG(LOG_NOT_IMPLEMENTED,_("add_i: HACK"));
+		return 0;
+	}
+	int num2=val2->toInt();
+	int num1=val1->toInt();
+
+	val1->decRef();
+	val2->decRef();
+	LOG(LOG_CALLS,_("add_i ") << num1 << '-' << num2);
+	return num1+num2;
 }
 
 ASObject* ABCVm::add_oi(ASObject* val2, intptr_t val1)
@@ -1810,6 +1855,20 @@ bool ABCVm::isTypelate(ASObject* type, ASObject* obj)
 	obj->decRef();
 	type->decRef();
 	return real_ret;
+}
+
+ASObject* ABCVm::asType(ASObject* obj, multiname* name)
+{
+	bool ret = ABCContext::isinstance(obj, name);	
+	LOG(LOG_CALLS,_("asType"));
+	
+	if(ret)
+		return obj;
+	else
+	{
+		obj->decRef();
+		return new Null;
+	}
 }
 
 ASObject* ABCVm::asTypelate(ASObject* type, ASObject* obj)

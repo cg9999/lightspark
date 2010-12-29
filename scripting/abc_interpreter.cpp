@@ -918,6 +918,19 @@ ASObject* ABCVm::executeFunction(SyntheticFunction* function, call_context* cont
 				context->runtime_stack_push(coerce_s(context->runtime_stack_pop()));
 				break;
 			}
+			case 0x86:
+			{
+				//astype
+				u30 t;
+				code >> t;
+				multiname* name=context->context->getMultiname(t,context);
+
+				ASObject* v1=context->runtime_stack_pop();
+
+				ASObject* ret=asType(v1, name);
+				context->runtime_stack_push(ret);
+				break;
+			}
 			case 0x87:
 			{
 				//astypelate
@@ -1202,6 +1215,34 @@ ASObject* ABCVm::executeFunction(SyntheticFunction* function, call_context* cont
 				u30 t;
 				code >> t;
 				incLocal_i(context, t);
+				break;
+			}
+			case 0xc4:
+			{
+				//negate_i
+				ASObject *val=context->runtime_stack_pop();
+				ASObject* ret=abstract_i(negate_i(val));
+				context->runtime_stack_push(ret);
+				break;
+			}
+			case 0xc5:
+			{
+				//add_i
+				ASObject* v2=context->runtime_stack_pop();
+				ASObject* v1=context->runtime_stack_pop();
+
+				ASObject* ret=abstract_i(add_i(v2, v1));
+				context->runtime_stack_push(ret);
+				break;
+			}
+			case 0xc6:
+			{
+				//subtract_i
+				ASObject* v2=context->runtime_stack_pop();
+				ASObject* v1=context->runtime_stack_pop();
+
+				ASObject* ret=abstract_i(subtract_i(v2, v1));
+				context->runtime_stack_push(ret);
 				break;
 			}
 			case 0xd0:
