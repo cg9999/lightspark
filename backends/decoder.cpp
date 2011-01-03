@@ -119,7 +119,9 @@ FFMpegVideoDecoder::FFMpegVideoDecoder(LS_VIDEO_CODEC codecId, uint8_t* initdata
 		codecContext->extradata=initdata;
 		codecContext->extradata_size=datalen;
 
-		//Ignore the frameRateHint as the rate is gathered from the video data
+		// Hint seems to be required for some H264 videos too
+		if(frameRateHint>0.0)
+			frameRate=frameRateHint;
 	}
 	else if(codecId==H263)
 	{
