@@ -32,7 +32,7 @@ uintptr_t ABCVm::bitAnd(ASObject* val2, ASObject* val1)
 	uintptr_t i2=val2->toUInt();
 	val1->decRef();
 	val2->decRef();
-	LOG(LOG_CALLS,_("bitAnd_oo ") << hex << i1 << '&' << i2);
+	LOG(LOG_CALLS,_("bitAnd_oo ") << hex << i1 << '&' << i2 << dec);
 	return i1&i2;
 }
 
@@ -41,7 +41,7 @@ uintptr_t ABCVm::bitAnd_oi(ASObject* val1, intptr_t val2)
 	uintptr_t i1=val1->toUInt();
 	uintptr_t i2=val2;
 	val1->decRef();
-	LOG(LOG_CALLS,_("bitAnd_oi ") << hex << i1 << '&' << i2);
+	LOG(LOG_CALLS,_("bitAnd_oi ") << hex << i1 << '&' << i2 << dec);
 	return i1&i2;
 }
 
@@ -103,6 +103,18 @@ intptr_t ABCVm::convert_i(ASObject* o)
 	LOG(LOG_CALLS, _("convert_i") );
 	intptr_t ret=o->toInt();
 	o->decRef();
+	return ret;
+}
+
+ASObject* ABCVm::convert_s(ASObject* o)
+{
+	LOG(LOG_CALLS, _("convert_s") );
+	ASObject* ret=o;
+	if(o->getObjectType()!=T_STRING)
+	{
+		ret=Class<ASString>::getInstanceS(o->toString(false));
+		o->decRef();
+	}
 	return ret;
 }
 
@@ -241,7 +253,7 @@ uintptr_t ABCVm::bitNot(ASObject* val)
 {
 	uintptr_t i1=val->toUInt();
 	val->decRef();
-	LOG(LOG_CALLS,_("bitNot ") << hex << i1);
+	LOG(LOG_CALLS,_("bitNot ") << hex << i1 << dec);
 	return ~i1;
 }
 
@@ -251,7 +263,7 @@ uintptr_t ABCVm::bitXor(ASObject* val2, ASObject* val1)
 	int i2=val2->toUInt();
 	val1->decRef();
 	val2->decRef();
-	LOG(LOG_CALLS,_("bitXor ") << hex << i1 << '^' << i2);
+	LOG(LOG_CALLS,_("bitXor ") << hex << i1 << '^' << i2 << dec);
 	return i1^i2;
 }
 
@@ -260,7 +272,7 @@ uintptr_t ABCVm::bitOr_oi(ASObject* val2, uintptr_t val1)
 	int i1=val1;
 	int i2=val2->toUInt();
 	val2->decRef();
-	LOG(LOG_CALLS,_("bitOr ") << hex << i1 << '|' << i2);
+	LOG(LOG_CALLS,_("bitOr ") << hex << i1 << '|' << i2 << dec);
 	return i1|i2;
 }
 
@@ -270,7 +282,7 @@ uintptr_t ABCVm::bitOr(ASObject* val2, ASObject* val1)
 	int i2=val2->toUInt();
 	val1->decRef();
 	val2->decRef();
-	LOG(LOG_CALLS,_("bitOr ") << hex << i1 << '|' << i2);
+	LOG(LOG_CALLS,_("bitOr ") << hex << i1 << '|' << i2 << dec);
 	return i1|i2;
 }
 
@@ -598,6 +610,33 @@ number_t ABCVm::multiply(ASObject* val2, ASObject* val1)
 	return num1*num2;
 }
 
+intptr_t ABCVm::multiply_i(ASObject* val2, ASObject* val1)
+{
+	int num1=val1->toInt();
+	int num2=val2->toInt();
+	val1->decRef();
+	val2->decRef();
+	LOG(LOG_CALLS,_("multiply ")  << num1 << '*' << num2);
+	return num1*num2;
+}
+
+void ABCVm::incLocal(call_context* th, int n)
+{
+	LOG(LOG_CALLS, _("incLocal ") << n );
+	if(th->locals[n]->getObjectType()==T_NUMBER)
+	{
+		Number* i=static_cast<Number*>(th->locals[n]);
+		i->val++;
+	}
+	else
+	{
+		number_t tmp=th->locals[n]->toNumber();
+		th->locals[n]->decRef();
+		th->locals[n]=abstract_d(tmp+1);
+	}
+
+}
+
 void ABCVm::incLocal_i(call_context* th, int n)
 {
 	LOG(LOG_CALLS, _("incLocal_i ") << n );
@@ -608,7 +647,43 @@ void ABCVm::incLocal_i(call_context* th, int n)
 	}
 	else
 	{
-		LOG(LOG_NOT_IMPLEMENTED,_("Cannot increment type ") << th->locals[n]->getObjectType());
+		int32_t tmp=th->locals[n]->toInt();
+		th->locals[n]->decRef();
+		th->locals[n]=abstract_i(tmp+1);
+	}
+
+}
+
+void ABCVm::decLocal(call_context* th, int n)
+{
+	LOG(LOG_CALLS, _("decLocal ") << n );
+	if(th->locals[n]->getObjectType()==T_NUMBER)
+	{
+		Number* i=static_cast<Number*>(th->locals[n]);
+		i->val--;
+	}
+	else
+	{
+		number_t tmp=th->locals[n]->toNumber();
+		th->locals[n]->decRef();
+		th->locals[n]=abstract_d(tmp-1);
+	}
+
+}
+
+void ABCVm::decLocal_i(call_context* th, int n)
+{
+	LOG(LOG_CALLS, _("decLocal_i ") << n );
+	if(th->locals[n]->getObjectType()==T_INTEGER)
+	{
+		Integer* i=static_cast<Integer*>(th->locals[n]);
+		i->val--;
+	}
+	else
+	{
+		int32_t tmp=th->locals[n]->toInt();
+		th->locals[n]->decRef();
+		th->locals[n]=abstract_i(tmp-1);
 	}
 
 }

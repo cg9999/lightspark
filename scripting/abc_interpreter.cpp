@@ -861,6 +861,8 @@ ASObject* ABCVm::executeFunction(SyntheticFunction* function, call_context* cont
 			case 0x70:
 			{
 				//convert_s
+				ASObject* val=context->runtime_stack_pop();
+				context->runtime_stack_push(convert_s(val));
 				break;
 			}
 			case 0x73:
@@ -957,12 +959,28 @@ ASObject* ABCVm::executeFunction(SyntheticFunction* function, call_context* cont
 				context->runtime_stack_push(ret);
 				break;
 			}
+			case 0x92:
+			{
+				//inclocal
+				u30 t;
+				code >> t;
+				incLocal(context, t);
+				break;
+			}
 			case 0x93:
 			{
 				//decrement
 				ASObject* val=context->runtime_stack_pop();
 				ASObject* ret=abstract_i(decrement(val));
 				context->runtime_stack_push(ret);
+				break;
+			}
+			case 0x94:
+			{
+				//declocal
+				u30 t;
+				code >> t;
+				decLocal(context, t);
 				break;
 			}
 			case 0x95:
@@ -1217,6 +1235,14 @@ ASObject* ABCVm::executeFunction(SyntheticFunction* function, call_context* cont
 				incLocal_i(context, t);
 				break;
 			}
+			case 0xc3:
+			{
+				//declocal_i
+				u30 t;
+				code >> t;
+				decLocal_i(context, t);
+				break;
+			}
 			case 0xc4:
 			{
 				//negate_i
@@ -1242,6 +1268,16 @@ ASObject* ABCVm::executeFunction(SyntheticFunction* function, call_context* cont
 				ASObject* v1=context->runtime_stack_pop();
 
 				ASObject* ret=abstract_i(subtract_i(v2, v1));
+				context->runtime_stack_push(ret);
+				break;
+			}
+			case 0xc7:
+			{
+				//multiply_i
+				ASObject* v2=context->runtime_stack_pop();
+				ASObject* v1=context->runtime_stack_pop();
+
+				ASObject* ret=abstract_i(multiply_i(v2, v1));
 				context->runtime_stack_push(ret);
 				break;
 			}
