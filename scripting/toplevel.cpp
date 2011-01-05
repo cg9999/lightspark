@@ -36,6 +36,7 @@
 #include "class.h"
 #include "exceptions.h"
 #include "backends/urlutils.h"
+#include <libxml/tree.h>
 
 using namespace std;
 using namespace lightspark;
@@ -507,7 +508,7 @@ XML::XML():root(NULL),node(NULL)
 
 XML::XML(XML* _r, xmlpp::Node* _n):root(_r),node(_n)
 {
-	assert(root);
+	assert(root && node);
 }
 
 XML::~XML()
@@ -521,6 +522,7 @@ void XML::sinit(Class_base* c)
 	c->super=Class<ASObject>::getClass();
 	c->max_level=c->super->max_level+1;
 	c->setConstructor(Class<IFunction>::getFunction(_constructor));
+	c->setMethodByQName("toString",AS3,Class<IFunction>::getFunction(XML::_toString),true);
 }
 
 ASFUNCTIONBODY(XML,_constructor)
@@ -573,10 +575,47 @@ ASObject* XML::getVariableByMultiname(const multiname& name, bool skip_impl, ASO
 	if(element==NULL)
 		return NULL;
 	xmlpp::Attribute* attr=element->get_attribute(attributeName.raw_buf());
-	ASObject* ret=Class<XML>::getInstanceS((root)?(root):this, attr);
+	if(attr==NULL)
+		return NULL;
+	XML* rootXML=(root)?(root):this;
+	rootXML->incRef();
+	ASObject* ret=Class<XML>::getInstanceS(rootXML, attr);
 	//The new object will be incReffed by the calling code
 	ret->fake_decRef();
 	return ret;
+}
+
+ASFUNCTIONBODY(XML,_toString)
+{
+	XML* th=Class<XML>::cast(obj);
+	return Class<ASString>::getInstanceS(th->toString_priv());
+}
+
+tiny_string XML::toString_priv() const
+{
+	//We have to use vanilla libxml2, libxml++ is not enough
+	xmlNodePtr libXml2Node=node->cobj();
+	tiny_string ret;
+	switch(libXml2Node->type)
+	{
+		case XML_ATTRIBUTE_NODE:
+		{
+			xmlChar* content=xmlNodeGetContent(libXml2Node);
+			ret=tiny_string((char*)content,true);
+			xmlFree(content);
+			break;
+		}
+		default:
+			throw UnsupportedException("Unsupport type in XML::toString");
+	}
+	return ret;
+}
+
+tiny_string XML::toString(bool debugMsg)
+{
+	if(debugMsg)
+		return ASObject::toString(true);
+	return toString_priv();
 }
 
 void XMLList::sinit(Class_base* c)
@@ -911,7 +950,7 @@ void ASString::sinit(Class_base* c)
 	c->setMethodByQName("slice",AS3,Class<IFunction>::getFunction(slice),true);
 	c->setMethodByQName("toLowerCase",AS3,Class<IFunction>::getFunction(toLowerCase),true);
 	c->setMethodByQName("toUpperCase",AS3,Class<IFunction>::getFunction(toUpperCase),true);
-	c->setMethodByQName("fromCharCode",AS3,Class<IFunction>::getFunction(fromCharCode),true);
+	c->setMethodByQName("fromCharCode",AS3,Class<IFunction>::getFunction(fromCharCode),false);
 	c->setGetterByQName("length","",Class<IFunction>::getFunction(_getLength),true);
 	//Fake method to override the default behavior
 	c->setMethodByQName("toString",AS3,Class<IFunction>::getFunction(ASString::_toString),true);
@@ -1960,23 +1999,23 @@ ASObject* SyntheticFunction::call(ASObject* obj, ASObject* const* args, uint32_t
 			else
 				ret=val(cc);
 		}
-		catch (ASObject* obj) // Doesn't have to be an ASError at all.
+		catch (ASObject* excobj) // Doesn't have to be an ASError at all.
 		{
 			unsigned int pos = cc->code->tellg();
 			bool no_handler = true;
 
-			LOG(LOG_TRACE, "got an " << obj->toString());
+			LOG(LOG_TRACE, "got an " << excobj->toString());
 			LOG(LOG_TRACE, "pos=" << pos);
 			for (unsigned int i=0;i<mi->body->exception_count;i++) {
 				exception_info exc=mi->body->exceptions[i];
 				multiname* name=mi->context->getMultiname(exc.exc_type, cc);
 				LOG(LOG_TRACE, "f=" << exc.from << " t=" << exc.to);
-				if (pos > exc.from && pos <= exc.to && ABCContext::isinstance(obj, name))
+				if (pos > exc.from && pos <= exc.to && ABCContext::isinstance(excobj, name))
 				{
 					no_handler = false;
 					cc->code->seekg((uint32_t)exc.target);
 					cc->runtime_stack_clear();
-					cc->runtime_stack_push(obj);
+					cc->runtime_stack_push(excobj);
 					for(uint32_t i=0;i<cc->scope_stack.size();i++)
 						cc->scope_stack[i]->decRef();
 					cc->scope_stack.clear();
@@ -1986,7 +2025,12 @@ ASObject* SyntheticFunction::call(ASObject* obj, ASObject* const* args, uint32_t
 			}
 			if (no_handler)
 			{
-				throw obj;
+				getVm()->popObjAndLevel();
+				obj->resetLevel();
+				tl=getVm()->getCurObjAndLevel();
+				tl.cur_this->setLevel(tl.cur_level);
+				delete cc;
+				throw excobj;
 			}
 			continue;
 		}
@@ -2438,7 +2482,8 @@ ASFUNCTIONBODY(ASString,charCodeAt)
 	ASString* th=static_cast<ASString*>(obj);
 	unsigned int index=args[0]->toInt();
 	assert_and_throw(index>=0 && index<th->data.size());
-	return abstract_i(th->data[index]);
+	//Character codes are expected to be positive
+	return abstract_i((uint8_t)th->data[index]);
 }
 
 ASFUNCTIONBODY(ASString,indexOf)
@@ -2513,12 +2558,15 @@ ASFUNCTIONBODY(ASString,toUpperCase)
 
 ASFUNCTIONBODY(ASString,fromCharCode)
 {
-	assert_and_throw(argslen==1);
-	int ret=args[0]->toInt();
-	if(ret>127)
-		LOG(LOG_NOT_IMPLEMENTED,_("Unicode not supported in String::fromCharCode"));
-	char buf[2] = { (char)ret, 0 };
-	return Class<ASString>::getInstanceS(buf);
+	ASString* ret=Class<ASString>::getInstanceS();
+	for(uint32_t i=0;i<argslen;i++)
+	{
+		int newChar=args[i]->toInt();
+		if(newChar>127)
+			LOG(LOG_NOT_IMPLEMENTED,_("Unicode not supported in String::fromCharCode"));
+		ret->data+=char(newChar);
+	}
+	return ret;
 }
 
 ASFUNCTIONBODY(ASString,replace)
@@ -3466,16 +3514,31 @@ bool lightspark::Boolean_concrete(ASObject* obj)
 
 ASFUNCTIONBODY(lightspark,parseInt)
 {
+	assert_and_throw(argslen==1 || argslen==2);
 	if(args[0]->getObjectType()==T_UNDEFINED)
+	{
+		LOG(LOG_ERROR,"Undefined passed to parseInt");
 		return new Undefined;
+	}
 	else
 	{
+		int radix=10;
+		if(argslen==2)
+		{
+			radix=args[1]->toInt();
+			assert_and_throw(radix==10 || radix==16);
+		}
 		const tiny_string& val=args[0]->toString();
 		const char* cur=val.raw_buf();
-		int ret=0;
-		if(strncmp(cur,"0x",2)==0) // Should be an exadecimal number
+		//Also 0x could be used to flag the number is hexadecimal
+		if(val.len()>=2 && strncmp(cur,"0x",2)==0)
 		{
+			radix=16;
 			cur+=2;
+		}
+		int ret=0;
+		if(radix==16) // Should be an exadecimal number
+		{
 			while(*cur)
 			{
 				ret<<=4; //*16
@@ -3483,7 +3546,7 @@ ASFUNCTIONBODY(lightspark,parseInt)
 				cur++;
 			}
 		}
-		else
+		else if(radix==10)
 			ret=atoi(cur);
 		return abstract_i(ret);
 	}

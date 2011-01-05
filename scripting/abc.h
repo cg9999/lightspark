@@ -505,6 +505,9 @@ private:
 	static void pushUInt(call_context* th, int n);
 	static void pushDouble(call_context* th, int n);
 	static void incLocal_i(call_context* th, int n);
+	static void incLocal(call_context* th, int n);
+	static void decLocal_i(call_context* th, int n);
+	static void decLocal(call_context* th, int n);
 	static void coerce(call_context* th, int n);
 	static ASObject* getProperty(ASObject* obj, multiname* name);
 	static intptr_t getProperty_i(ASObject* obj, multiname* name);
@@ -554,6 +557,7 @@ private:
 	static uintptr_t lShift(ASObject*,ASObject*);
 	static uintptr_t lShift_io(uintptr_t,ASObject*);
 	static number_t multiply(ASObject*,ASObject*);
+	static intptr_t multiply_i(ASObject*,ASObject*);
 	static number_t multiply_oi(ASObject*, intptr_t);
 	static number_t divide(ASObject*,ASObject*);
 	static intptr_t modulo(ASObject*,ASObject*);
@@ -572,6 +576,7 @@ private:
 	static intptr_t convert_i(ASObject*);
 	static uintptr_t convert_u(ASObject*);
 	static number_t convert_d(ASObject*);
+	static ASObject* convert_s(ASObject*);
 	static bool convert_b(ASObject*);
 	static bool greaterThan(ASObject*,ASObject*);
 	static bool greaterEquals(ASObject*,ASObject*);

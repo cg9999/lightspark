@@ -474,6 +474,7 @@ private:
 		sortComparatorWrapper(IFunction* c):comparator(c){}
 		bool operator()(const data_slot& d1, const data_slot& d2);
 	};
+	tiny_string toString_priv() const;
 public:
 	//These utility methods are also used by ByteArray 
 	static bool isValidMultiname(const multiname& name, unsigned int& index);
@@ -545,7 +546,6 @@ public:
 	bool hasNext(unsigned int& index, bool& out);
 	bool nextName(unsigned int index, ASObject*& out);
 	bool nextValue(unsigned int index, ASObject*& out);
-	tiny_string toString_priv() const;
 };
 
 class Integer : public ASObject
@@ -607,6 +607,7 @@ class Number : public ASObject
 {
 friend ASObject* abstract_d(number_t i);
 friend class ABCContext;
+friend class ABCVm;
 CLASSBUILDABLE(Number);
 private:
 	double val;
@@ -650,15 +651,18 @@ private:
 	//The node this object represent
 	xmlpp::Node* node;
 	static void recusiveGetDescendantsByQName(XML* root, xmlpp::Node* node, const tiny_string& name, const tiny_string& ns, std::vector<XML*>& ret);
+	tiny_string toString_priv() const;
 public:
 	XML();
 	XML(XML* _r, xmlpp::Node* _n);
 	~XML();
 	ASFUNCTION(_constructor);
+	ASFUNCTION(_toString);
 	static void buildTraits(ASObject* o){};
 	static void sinit(Class_base* c);
 	void getDescendantsByQName(const tiny_string& name, const tiny_string& ns, std::vector<XML*>& ret);
 	ASObject* getVariableByMultiname(const multiname& name, bool skip_impl, ASObject* base=NULL);
+	tiny_string toString(bool debugMsg=false);
 };
 
 class XMLList: public ASObject
