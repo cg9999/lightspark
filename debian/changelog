@@ -1,32 +1,8 @@
-lightspark (0.4.5.1-1+git20101229) natty; urgency=low
+lightspark (0.4.5.1+git20110105) natty; urgency=low
 
-  * Update to 1b16bfd2b51325dc0504
+  * Update to 6b03fec277cd71d06258 
 
- -- Henri Valta <cg@jakorasia.info>  Wed, 29 Dec 2010 15:38:10 +0200
-
-lightspark (0.4.5.1-1+git20101228) natty; urgency=low
-
-  * update to 4f7449444f524d7c7d71
-
- -- Henri Valta <cg@jakorasia.info>  Tue, 28 Dec 2010 05:03:45 +0200
-
-lightspark (0.4.5.1-1+git20101227) natty; urgency=low
-
-  * Update to 5f6b06b41b8e005e2ea3
-
- -- Henri Valta <cg@jakorasia.info>  Mon, 27 Dec 2010 06:54:32 +0200
-
-lightspark (0.4.5.1-1+git20101225) natty; urgency=low
-
-  * Update to 2d46a7b0eb71b9a5676a
-
- -- Henri Valta <cg@jakorasia.info>  Sat, 25 Dec 2010 12:26:46 +0200
-
-lightspark (0.4.5.1-1+git20101220) natty; urgency=low
-
-  * Update to 4fb02d66e9c45a8ed0da
-
- -- Henri Valta <cg@jakorasia.info>  Mon, 20 Dec 2010 23:23:45 +0200
+ -- Henri Valta <cg@jakorasia.info>  Wed, 05 Jan 2011 21:35:38 +0200
 
 lightspark (0.4.5.1-0ubuntu1) maverick; urgency=low
 
