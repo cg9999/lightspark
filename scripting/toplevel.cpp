@@ -532,6 +532,8 @@ ASFUNCTIONBODY(XML,_constructor)
 		return NULL;
 	assert_and_throw(argslen==1 && args[0]->getObjectType()==T_STRING);
 	ASString* str=Class<ASString>::cast(args[0]);
+	if(str->data.size()==0)
+		return NULL;
 	th->parser.parse_memory_raw((const unsigned char*)str->data.c_str(), str->data.size());
 	th->node=th->parser.get_document()->get_root_node();
 	return NULL;

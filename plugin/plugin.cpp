@@ -2,6 +2,7 @@
     Lighspark, a free flash player implementation
 
     Copyright (C) 2009,2010  Alessandro Pignotti (a.pignotti@sssup.it)
+    Copyright (C) 2010  Timon Van Overveldt (timonvo@gmail.com)
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Lesser General Public License as published by
@@ -23,6 +24,8 @@
 #include <string>
 #include <algorithm>
 #include "backends/urlutils.h"
+
+#include "npscriptobject.h"
 
 #define MIME_TYPES_HANDLED  "application/x-shockwave-flash"
 #define FAKE_MIME_TYPE  "application/x-lightspark"
@@ -210,8 +213,9 @@ void NS_DestroyPluginInstance(nsPluginInstanceBase * aPlugin)
 //
 // nsPluginInstance class implementation
 //
-nsPluginInstance::nsPluginInstance(NPP aInstance, int16_t argc, char** argn, char** argv) : nsPluginInstanceBase(),
-	mInstance(aInstance),mInitialized(FALSE),mContainer(NULL),mWindow(0),mainDownloaderStream(NULL),mainDownloader(NULL),m_pt(NULL)
+nsPluginInstance::nsPluginInstance(NPP aInstance, int16_t argc, char** argn, char** argv) : 
+	nsPluginInstanceBase(), mInstance(aInstance),mInitialized(FALSE),mContainer(NULL),mWindow(0),
+	mainDownloaderStream(NULL),mainDownloader(NULL),scriptObject(NULL),m_pt(NULL)
 {
 	cout << "Lightspark version " << VERSION << " Copyright 2009-2010 Alessandro Pignotti" << endl << endl;
 	sys=NULL;
@@ -232,6 +236,18 @@ nsPluginInstance::nsPluginInstance(NPP aInstance, int16_t argc, char** argn, cha
 		//The SWF file url should be getted from NewStream
 	}
 	m_sys->downloadManager=new NPDownloadManager(mInstance);
+
+	int p_major, p_minor, n_major, n_minor;
+	NPN_Version(&p_major, &p_minor, &n_major, &n_minor);
+	if (n_minor >= 14) { // since NPAPI start to support
+		scriptObject =
+			(NPScriptObjectGW *) NPN_CreateObject(mInstance, &NPScriptObjectGW::npClass);
+		m_sys->extScriptObject = scriptObject->getScriptObject();
+		scriptObject->m_sys = m_sys;
+	}
+	else
+		LOG(LOG_ERROR, "PLUGIN: Browser doesn't support NPRuntime");
+
 	//The sys var should be NULL in this thread
 	sys=NULL;
 }
@@ -242,6 +258,8 @@ nsPluginInstance::~nsPluginInstance()
 	sys=m_sys;
 	if(mainDownloader)
 		mainDownloader->stop();
+	// Prepare our external script object for destruction
+	static_cast<NPScriptObject*>(m_sys->extScriptObject)->destroy();
 	if(m_pt)
 		m_pt->stop();
 	m_sys->setShutdownFlag();
@@ -289,6 +307,17 @@ NPError nsPluginInstance::GetValue(NPPVariable aVariable, void *aValue)
     case NPPVpluginNeedsXEmbed:
       return NS_PluginGetValue(aVariable, aValue) ;
       break;
+		case NPPVpluginScriptableNPObject:
+			if(scriptObject)
+			{
+				void **v = (void **)aValue;
+				NPN_RetainObject(scriptObject);
+				*v = scriptObject;
+				LOG(LOG_NO_INFO, "PLUGIN: NPScriptObjectGW returned to browser");
+				break;
+			}
+			else
+				LOG(LOG_NO_INFO, "PLUGIN: NPScriptObjectGW requested but was NULL");
     default:
       err = NPERR_INVALID_PARAM;
       break;
