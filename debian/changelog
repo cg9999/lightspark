@@ -1,8 +1,8 @@
-lightspark (0.4.5.1+git20110105) natty; urgency=low
+lightspark (0.4.5.1+git20110107) natty; urgency=low
 
-  * Update to 6b03fec277cd71d06258 
+  * Update to fc459c59873a363a7e3b
 
- -- Henri Valta <cg@jakorasia.info>  Wed, 05 Jan 2011 21:35:38 +0200
+ -- Henri Valta <cg@jakorasia.info>  Fri, 07 Jan 2011 00:09:03 +0200
 
 lightspark (0.4.5.1-0ubuntu1) maverick; urgency=low
 
