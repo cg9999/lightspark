@@ -157,7 +157,7 @@ SystemState::SystemState(ParseThread* parseThread, uint32_t fileSize):
 	renderThread(NULL),inputThread(NULL),engine(NONE),fileDumpAvailable(0),
 	waitingForDump(false),vmVersion(VMNONE),childPid(0),useGnashFallback(false),
 	showProfilingData(false),showDebug(false),currentVm(NULL),finalizingDestruction(false),
-	useInterpreter(true),useJit(false),downloadManager(NULL),scaleMode(SHOW_ALL)
+	useInterpreter(true),useJit(false),downloadManager(NULL),extScriptObject(NULL),scaleMode(SHOW_ALL)
 {
 	cookiesFileName[0]=0;
 	//Create the thread pool
@@ -456,6 +456,7 @@ void SystemState::EngineCreator::execute()
 void SystemState::EngineCreator::threadAbort()
 {
 	sys->fileDumpAvailable.signal();
+	sys->getRenderThread()->forceInitialization();
 }
 
 #ifndef GNASH_PATH
@@ -631,7 +632,9 @@ void SystemState::createEngines()
 	renderThread->waitForInitialization();
 	l.lock();
 	//As we lost the lock the shutdown procesure might have started
-	if(currentVm && !shutdown)
+	if(shutdown)
+		return;
+	if(currentVm)
 		currentVm->start();
 	l.unlock();
 	//Now that there is something to actually render the contents add the SystemState to the stage
